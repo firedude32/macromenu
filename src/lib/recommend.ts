@@ -5,7 +5,7 @@
 // invented: every Macros value traces back to src/data/.
 
 import type { Combo, Goal, Macros, UserProfile } from '../data/types';
-import { combos, menuItems } from '../data';
+import { combos, menuItems, restaurants } from '../data';
 import { fitScore } from './score';
 
 export interface Recommendable extends Macros {
@@ -157,4 +157,26 @@ export function recommendationBuckets(
   }
 
   return buckets;
+}
+
+/** A scored recommendable tagged with its restaurant (for the cross-restaurant feed). */
+export interface FeedPick extends ScoredRecommendable {
+  restaurantName: string;
+}
+
+/**
+ * Cross-restaurant "Suggested Meals" feed (SPEC §5.7): every pick from every
+ * verified restaurant, scored for the user, sorted score descending.
+ */
+export function suggestedMealsFeed(user: UserProfile): FeedPick[] {
+  return restaurants
+    .filter((r) => r.status === 'verified')
+    .flatMap((r) =>
+      restaurantRecommendables(r.id).map((pick) => ({
+        ...pick,
+        score: fitScore(pick, user),
+        restaurantName: r.name,
+      })),
+    )
+    .sort((a, b) => b.score - a.score);
 }

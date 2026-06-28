@@ -52,6 +52,7 @@ export function RestaurantDetail() {
 
   const [mode, setMode] = useState<Mode>("best")
   const [sourceSheetOpen, setSourceSheetOpen] = useState(false)
+  const [bestForYouSheetOpen, setBestForYouSheetOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -205,7 +206,7 @@ export function RestaurantDetail() {
           </button>
           <button
             type="button"
-            onClick={() => setMode("best")}
+            onClick={() => setBestForYouSheetOpen(true)}
             aria-label="Best for you"
             className="flex size-9 items-center justify-center rounded-full bg-cta-black shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
           >
@@ -413,6 +414,69 @@ export function RestaurantDetail() {
           )}
         </div>
       )}
+
+      {/* Best-for-you modal (SPEC §5.5) */}
+      <BottomSheet open={bestForYouSheetOpen} onClose={() => setBestForYouSheetOpen(false)}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <span className="flex size-9 items-center justify-center rounded-tile bg-cta-black">
+              <Sparkles className="size-5 text-white" />
+            </span>
+            <button
+              type="button"
+              onClick={() => setBestForYouSheetOpen(false)}
+              aria-label="Close"
+              className="flex size-9 items-center justify-center rounded-full bg-frame-bg"
+            >
+              <X className="size-5 text-ink-soft" />
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center gap-2 text-center">
+            <span
+              className={cn(
+                "flex size-12 items-center justify-center rounded-tile text-lg font-extrabold text-white",
+                restaurantColor(restaurant.id),
+              )}
+            >
+              {restaurantInitial(restaurant.name)}
+            </span>
+            <div>
+              <p className="text-base font-extrabold text-ink">
+                {buckets[0]?.emoji} {buckets[0]?.title ?? "Best For Me"}
+              </p>
+              <p className="text-sm text-ink-soft">{restaurant.name}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 pb-2">
+            {(buckets[0]?.items ?? []).slice(0, 3).map((pick) => (
+              <RecommendationCard
+                key={pick.id}
+                title={pick.name}
+                score={pick.score}
+                orderLine={pick.orderLine}
+                macros={pick}
+                whyText={whyThisPick(pick, demoUser)}
+                verified={pick.verified}
+                onTap={
+                  pick.kind === "item"
+                    ? () => {
+                        setBestForYouSheetOpen(false)
+                        navigate(`/item/${restaurant.id}/${pick.id}`)
+                      }
+                    : undefined
+                }
+              />
+            ))}
+            {(buckets[0]?.items.length ?? 0) === 0 && (
+              <p className="py-4 text-center text-sm text-ink-soft">
+                No recommendations yet for this menu.
+              </p>
+            )}
+          </div>
+        </div>
+      </BottomSheet>
 
       {/* Data source sheet */}
       <BottomSheet open={sourceSheetOpen} onClose={() => setSourceSheetOpen(false)}>
