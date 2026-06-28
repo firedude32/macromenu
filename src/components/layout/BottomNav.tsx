@@ -22,7 +22,7 @@ export function BottomNav() {
             <>
               <span
                 className={cn(
-                  "flex size-9 items-center justify-center rounded-full",
+                  "flex size-9 items-center justify-center rounded-full transition-transform active:scale-90",
                   isActive && "bg-primary",
                 )}
               >

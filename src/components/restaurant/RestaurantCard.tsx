@@ -25,7 +25,7 @@ export function RestaurantCard({
         tabIndex={0}
         onClick={() => onTap(restaurant)}
         onKeyDown={(e) => e.key === "Enter" && onTap(restaurant)}
-        className="relative block cursor-pointer"
+        className="relative block cursor-pointer transition-transform active:scale-[0.98]"
       >
         <span
           className={cn(

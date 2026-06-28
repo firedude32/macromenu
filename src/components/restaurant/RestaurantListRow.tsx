@@ -15,7 +15,7 @@ export function RestaurantListRow({ restaurant, onTap }: RestaurantListRowProps)
     <button
       type="button"
       onClick={() => onTap(restaurant)}
-      className="flex w-full items-center gap-3 rounded-card bg-card p-3 text-left shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
+      className="flex w-full items-center gap-3 rounded-card bg-card p-3 text-left shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-transform active:scale-[0.98]"
     >
       <span
         className={cn(

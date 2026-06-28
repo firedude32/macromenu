@@ -53,7 +53,10 @@ export function RecommendationCard({
         tabIndex={onTap ? 0 : undefined}
         onClick={onTap}
         onKeyDown={onTap ? (e) => e.key === "Enter" && onTap() : undefined}
-        className="flex flex-col gap-3"
+        className={cn(
+          "flex flex-col gap-3",
+          onTap && "cursor-pointer transition-transform active:scale-[0.99]",
+        )}
       >
         <div className="flex items-start justify-between gap-3">
           <h3 className="flex-1 text-lg font-extrabold leading-tight text-ink">{title}</h3>
@@ -73,7 +76,7 @@ export function RecommendationCard({
             e.stopPropagation()
             onTap?.()
           }}
-          className="w-full rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white"
+          className="w-full rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white transition-transform active:scale-[0.98]"
         >
           Order Now
         </button>

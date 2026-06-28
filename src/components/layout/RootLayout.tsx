@@ -18,7 +18,10 @@ export function RootLayout() {
     <PhoneFrame>
       <StatusBar />
       <div className="flex-1 overflow-y-auto">
-        <Outlet />
+        {/* Keyed on the route so each screen / tab change fades in (SPEC §11). */}
+        <div key={pathname} className="animate-in fade-in duration-200">
+          <Outlet />
+        </div>
       </div>
       {showNav && <BottomNav />}
     </PhoneFrame>

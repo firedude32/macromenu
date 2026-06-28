@@ -282,7 +282,7 @@ export function Home() {
           <button
             type="button"
             onClick={() => setFilterSheetOpen(false)}
-            className="mt-2 rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white"
+            className="mt-2 rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white transition-transform active:scale-[0.98]"
           >
             Done
           </button>
@@ -303,7 +303,7 @@ export function Home() {
           <button
             type="button"
             onClick={() => setAuditPendingRestaurant(null)}
-            className="mt-2 w-full rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white"
+            className="mt-2 w-full rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white transition-transform active:scale-[0.98]"
           >
             Got it
           </button>

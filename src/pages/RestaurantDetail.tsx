@@ -327,7 +327,7 @@ export function RestaurantDetail() {
                     </button>
                   </div>
                   {isExpanded && (
-                    <div className="flex flex-col gap-2 border-t border-frame-bg pt-3">
+                    <div className="flex animate-in flex-col gap-2 border-t border-frame-bg pt-3 fade-in slide-in-from-top-1 duration-200">
                       <div className="flex flex-wrap gap-3">
                         <MacroDotStat type="protein" label="Protein" value={`${row.protein}g`} />
                         <MacroDotStat type="carbs" label="Carbs" value={`${row.carbs}g`} />
@@ -345,7 +345,7 @@ export function RestaurantDetail() {
           </div>
 
           {selected.size > 0 && (
-            <div className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-[430px] items-center justify-between gap-3 bg-cta-black px-5 py-4 text-white">
+            <div className="sticky bottom-0 z-40 -mx-5 flex animate-in items-center justify-between gap-3 bg-cta-black px-5 py-4 text-white slide-in-from-bottom-2 duration-200">
               <span className="text-sm font-semibold">
                 {selected.size} {selected.size === 1 ? "item" : "items"} · {tallyCal} cal ·{" "}
                 {tallyProtein}g P
@@ -353,7 +353,7 @@ export function RestaurantDetail() {
               <button
                 type="button"
                 onClick={() => setSelected(new Set())}
-                className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold"
+                className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold transition-transform active:scale-95"
               >
                 Reset
               </button>
@@ -385,7 +385,7 @@ export function RestaurantDetail() {
                   )}
                 </button>
                 {isOpen && (
-                  <div className="flex flex-col gap-3">
+                  <div className="flex animate-in flex-col gap-3 fade-in slide-in-from-top-1 duration-200">
                     {bucket.items.map((pick) => (
                       <RecommendationCard
                         key={pick.id}
@@ -489,7 +489,7 @@ export function RestaurantDetail() {
           <button
             type="button"
             onClick={() => setSourceSheetOpen(false)}
-            className="mt-2 w-full rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white"
+            className="mt-2 w-full rounded-full bg-cta-black py-3 text-center text-sm font-bold text-white transition-transform active:scale-[0.98]"
           >
             Got it
           </button>

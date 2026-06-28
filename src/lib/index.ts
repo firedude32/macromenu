@@ -3,4 +3,3 @@
 export * from './tdee';
 export * from './score';
 export * from './recommend';
-export { runSanityChecks } from './sanityCheck';
