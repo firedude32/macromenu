@@ -14,10 +14,13 @@
   --color-danger: #ef4444;
   --color-ink: #0a0a0a;
   --color-ink-soft: #6b7280;
+  --color-line: #9ca3af;
   --color-cta-black: #111114;
   --color-app-bg: #f7f7f8;
   --color-card: #ffffff;
   --color-frame-bg: #e9e9ec;
+  --color-insight-from: #2dd4bf;
+  --color-insight-to: #3b82f6;
 
   --radius-card: 22px;
   --radius-tile: 16px;

@@ -29,7 +29,7 @@ export function BottomNav() {
                 <Icon
                   className="size-5"
                   strokeWidth={isActive ? 2.25 : 1.5}
-                  color={isActive ? "#FFFFFF" : "#9CA3AF"}
+                  color={isActive ? "var(--color-card)" : "var(--color-line)"}
                 />
               </span>
               <span
