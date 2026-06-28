@@ -1,0 +1,49 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* MacroMenu brand tokens — SPEC.md §3.1 */
+  --color-primary: #16a34a;
+  --color-green-bright: #22c55e;
+  --color-cal: #16a34a;
+  --color-protein: #3b82f6;
+  --color-carbs: #f59e0b;
+  --color-fat: #8b5cf6;
+  --color-danger: #ef4444;
+  --color-ink: #0a0a0a;
+  --color-ink-soft: #6b7280;
+  --color-line: #9ca3af;
+  --color-cta-black: #111114;
+  --color-app-bg: #f7f7f8;
+  --color-card: #ffffff;
+  --color-frame-bg: #e9e9ec;
+  --color-insight-from: #2dd4bf;
+  --color-insight-to: #3b82f6;
+
+  --radius-card: 22px;
+  --radius-tile: 16px;
+}
+
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    color-scheme: light;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-frame-bg);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    height: 100%;
+  }
+}
