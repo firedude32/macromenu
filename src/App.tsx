@@ -11,7 +11,6 @@ import { ProfilePreferences } from "@/pages/ProfilePreferences"
 import { ProfileData } from "@/pages/ProfileData"
 import { ProfileTerms } from "@/pages/ProfileTerms"
 import { ProfilePrivacy } from "@/pages/ProfilePrivacy"
-import { Gallery } from "@/pages/Gallery"
 
 function App() {
   return (
@@ -28,8 +27,6 @@ function App() {
         <Route path="/profile/data" element={<ProfileData />} />
         <Route path="/profile/terms" element={<ProfileTerms />} />
         <Route path="/profile/privacy" element={<ProfilePrivacy />} />
-        {/* TEMPORARY — remove in the polish pass (SPEC.md §11 step 11) */}
-        <Route path="/gallery" element={<Gallery />} />
       </Route>
     </Routes>
   )

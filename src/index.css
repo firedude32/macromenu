@@ -64,3 +64,17 @@
     height: 100%;
   }
 }
+
+/* Respect the user's motion preference everywhere — neutralize transitions,
+   keyframe animations, and smooth scrolling (SPEC §3.5, §11). The loading
+   screen also short-circuits its JS count-up via a matchMedia check. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

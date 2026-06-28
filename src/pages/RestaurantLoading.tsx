@@ -155,7 +155,7 @@ export function RestaurantLoading() {
         disabled={percent < 100}
         onClick={() => navigate(`/restaurant/${id}`, { replace: true })}
         className={cn(
-          "w-full rounded-full py-4 text-center text-base font-bold transition-colors",
+          "w-full rounded-full py-4 text-center text-base font-bold transition active:scale-[0.98] disabled:active:scale-100",
           percent >= 100 ? "bg-cta-black text-white" : "bg-frame-bg text-ink-soft",
         )}
       >

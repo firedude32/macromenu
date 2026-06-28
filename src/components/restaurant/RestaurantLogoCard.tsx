@@ -12,7 +12,7 @@ export function RestaurantLogoCard({ restaurant, onTap }: RestaurantLogoCardProp
     <button
       type="button"
       onClick={() => onTap(restaurant)}
-      className="flex w-20 shrink-0 flex-col items-center gap-2"
+      className="flex w-20 shrink-0 flex-col items-center gap-2 transition-transform active:scale-95"
     >
       <span
         className={cn(

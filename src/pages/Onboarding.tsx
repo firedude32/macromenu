@@ -176,7 +176,7 @@ export function Onboarding() {
         <button
           type="button"
           onClick={step === "done" ? finish : goNext}
-          className="rounded-full bg-cta-black py-3.5 text-center text-base font-bold text-white"
+          className="rounded-full bg-cta-black py-3.5 text-center text-base font-bold text-white transition-transform active:scale-[0.98]"
         >
           {step === "done" ? "Get started" : "Continue"}
         </button>
