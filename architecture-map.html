@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>MacroMenu — Architecture Map</title>
+<style>
+  :root {
+    --bg: #0F0F0F; --panel: #161616; --panel-2: #1c1c1c; --border: #2a2a2a;
+    --text: #e8e8e8; --muted: #8a8a8a;
+    --client: #4ea1ff; --route: #7bd389; --service: #c792ea; --db: #ffb86b;
+    --external: #ff6b9d; --critical: #ff3860; --accent: #f5b942; --accent-2: #ff7a45;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    overflow: hidden; height: 100%; }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; white-space: nowrap; }
+  header .sub { color: var(--muted); font-size: 12px; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer; user-select: none;
+    transition: all .15s; white-space: nowrap; }
+  .chip:hover { border-color: var(--client); }
+  .chip.active { background: var(--client); color: #001018; border-color: var(--client); font-weight: 700; }
+  .chip.bugs.active { background: var(--critical); border-color: var(--critical); color: #fff; }
+
+  .legend { display: flex; gap: 10px; margin-left: auto; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #canvas-wrap { flex: 1; position: relative; overflow: hidden; background:
+      radial-gradient(circle at 20% 20%, #141414 0%, var(--bg) 70%); }
+  svg#graph { position: absolute; top: 0; left: 0; cursor: grab; }
+  svg#graph.dragging { cursor: grabbing; }
+
+  .controls { position: absolute; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+  .controls button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); font-size: 16px; cursor: pointer; }
+  .controls button:hover { border-color: var(--client); }
+
+  .cluster-box { fill-opacity: 0.07; stroke-opacity: 0.5; stroke-width: 1; rx: 14; }
+  .cluster-label { fill: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; }
+
+  .node-rect { stroke-width: 1.6; rx: 10; transition: opacity .15s, stroke-width .15s; cursor: pointer; }
+  .node-rect.critical { stroke-width: 2.4; }
+  .node-rect.dimmed { opacity: 0.12; }
+  .node-rect.selected { stroke-width: 3px; filter: drop-shadow(0 0 6px currentColor); }
+
+  .node-label { fill: var(--text); font-size: 12.5px; font-weight: 700; pointer-events: none; }
+  .node-sub { fill: var(--muted); font-size: 10.5px; pointer-events: none; }
+  .node-sub.dead { fill: var(--critical); font-weight: 700; }
+  .node-group.dimmed .node-label, .node-group.dimmed .node-sub { opacity: 0.15; }
+
+  .badge-fix { fill: #2bb673; }
+  .badge-bug { fill: var(--critical); }
+  .badge-text { fill: #fff; font-size: 9px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+
+  .edge-path { fill: none; stroke-width: 1.6; opacity: 0.55; transition: opacity .15s, stroke-width .15s; }
+  .edge-path.dimmed { opacity: 0.04; }
+  .edge-path.hi { opacity: 1; stroke-width: 2.6; }
+  .edge-label { font-size: 9.5px; fill: var(--muted); pointer-events: none; }
+  .edge-label.dimmed { opacity: 0.08; }
+
+  #sidebar { width: 360px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--border);
+    overflow-y: auto; padding: 18px; }
+  #sidebar h2 { font-size: 17px; margin: 0 0 4px; }
+  #sidebar .role { color: var(--accent); font-size: 12.5px; font-weight: 600; margin-bottom: 10px; }
+  #sidebar .plain { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+  #sidebar .path { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
+    color: var(--client); background: var(--panel-2); padding: 6px 9px; border-radius: 6px;
+    display: inline-block; margin-bottom: 14px; word-break: break-all; }
+  #sidebar h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+    margin: 16px 0 6px; }
+  #sidebar ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.6; }
+  #sidebar li { margin-bottom: 4px; }
+  .edge-list { font-size: 12px; }
+  .edge-list .e-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0;
+    border-bottom: 1px dashed var(--border); }
+  .edge-list .e-row span:first-child { color: var(--text); }
+  .edge-list .e-row span:last-child { color: var(--muted); text-align: right; }
+  .tag-pill { display: inline-block; font-size: 10px; background: var(--panel-2); color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; margin: 2px 3px 0 0; }
+  .sev-high { color: var(--critical); font-weight: 800; }
+  .sev-med { color: var(--accent); font-weight: 800; }
+  .sev-low { color: var(--muted); font-weight: 800; }
+  .findings li { margin-bottom: 8px; }
+  .empty-hint { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>MacroMenu</h1>
+    <span class="sub">interactive architecture map</span>
+    <div class="chips" id="chips"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--client)"></span>entry</span>
+      <span><span class="dot" style="background:var(--route)"></span>route</span>
+      <span><span class="dot" style="background:var(--service)"></span>service/logic</span>
+      <span><span class="dot" style="background:var(--db)"></span>data</span>
+      <span><span class="dot" style="background:var(--critical)"></span>critical path</span>
+    </div>
+  </header>
+  <main>
+    <div id="canvas-wrap">
+      <svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="controls">
+        <button id="zoom-in" title="Zoom in">+</button>
+        <button id="zoom-out" title="Zoom out">–</button>
+        <button id="zoom-fit" title="Fit">Fit</button>
+      </div>
+    </div>
+    <div id="sidebar"></div>
+  </main>
+</div>
+
+<script>
+// =====================================================================
+// DATA
+// =====================================================================
+
+const clusters = [
+  { id: 'entry',      label: 'Entry',               x: 20,   y: 0, w: 220, h: 280, color: 'var(--client)' },
+  { id: 'routes',     label: 'Routes (Pages)',      x: 280,  y: 0, w: 420, h: 640, color: 'var(--route)' },
+  { id: 'state',      label: 'State (Hooks)',       x: 740,  y: 0, w: 240, h: 340, color: 'var(--service)' },
+  { id: 'components', label: 'Components',          x: 1020, y: 0, w: 760, h: 820, color: 'var(--service)' },
+  { id: 'logic',      label: 'Logic (src/lib)',     x: 1820, y: 0, w: 300, h: 540, color: 'var(--service)' },
+  { id: 'data',       label: 'Data (src/data)',     x: 2160, y: 0, w: 300, h: 460, color: 'var(--db)' },
+];
+
+const N = (id, cluster, label, sub, x, y, w, h, color, opts = {}) => ({
+  id, cluster, label, sub, x, y, w, h, color, ...opts
+});
+
+const nodes = [
+  // -------------------- ENTRY --------------------
+  N('main', 'entry', 'main.tsx', 'app bootstrap', 40, 40, 180, 60, 'client', {
+    role: 'Mounts the React tree into #root inside a BrowserRouter.',
+    plain: 'This is the very first file that runs. It tells the browser "draw the app here" and turns on page-style URL navigation.',
+    path: 'src/main.tsx:7',
+    notes: ['Wraps <App/> in <BrowserRouter> — client-side routing only, no server router.', 'StrictMode is on, so effects double-fire in dev.'],
+    tag: ['overview', 'all'],
+    critical: true,
+  }),
+  N('app', 'entry', 'App.tsx', 'route table', 40, 150, 180, 90, 'client', {
+    role: 'Declares every URL → page mapping using react-router-dom <Routes>.',
+    plain: 'This is the map of every screen in the app and which web address shows it — like a table of contents.',
+    path: 'src/App.tsx:15',
+    notes: ['All 11 routes nest under one <RootLayout> element (App.tsx:18).', 'No 404/catch-all route is defined — unknown paths render nothing inside the frame.'],
+    tag: ['overview', 'all'],
+    critical: true,
+  }),
+
+  // -------------------- ROUTES (PAGES) --------------------
+  N('onboarding', 'routes', 'Onboarding.tsx', '/onboarding', 300, 40, 190, 70, 'route', {
+    role: 'Six-step wizard that builds a UserProfile and computes calorie/macro targets via tdee.ts.',
+    plain: 'The first-run questionnaire: goal, body stats, then it shows your daily calorie/macro targets before dropping you into the app.',
+    path: 'src/pages/Onboarding.tsx:26',
+    notes: ['"Skip — use demo profile" (line 184) writes the seeded demoUser straight to localStorage.', 'Recomputes targets live on every stat change via computeTargets (line 36).'],
+    tag: ['profile', 'all'],
+  }),
+  N('home', 'routes', 'Home.tsx', '/', 510, 40, 190, 70, 'route', {
+    role: 'Restaurant directory: search, mood filters, and four horizontally-scrolling rows (Fast Food, Near Me, Favorites, Most Popular).',
+    plain: 'The home screen — browse or search restaurants, filter by what protein you\'re craving, and tap one to see its menu.',
+    path: 'src/pages/Home.tsx:47',
+    notes: ['handleTap (line 60): verified restaurants navigate to the loading screen; auditPending ones open a "still verifying" sheet instead.', 'City picker (line 25) is cosmetic — selecting a city only changes the label, the seed data is single-city.'],
+    tag: ['discovery', 'overview', 'all'],
+    critical: true,
+  }),
+  N('restaurant-loading', 'routes', 'RestaurantLoading.tsx', '/restaurant/:id/loading', 300, 140, 190, 70, 'route', {
+    role: 'Faked 3-second progress animation (requestAnimationFrame) before auto-navigating into the restaurant menu.',
+    plain: 'A purely cosmetic "analyzing your menu" loading screen — nothing is actually computed here, it just waits ~3 seconds for effect.',
+    path: 'src/pages/RestaurantLoading.tsx:35',
+    notes: ['Respects prefers-reduced-motion by skipping straight to 100% (line 49).', 'Auto-replaces history entry on completion (line 72) so back-button skips the loader.'],
+    tag: ['discovery', 'all'],
+    critical: true,
+  }),
+  N('restaurant-detail', 'routes', 'RestaurantDetail.tsx', '/restaurant/:id', 510, 140, 190, 70, 'route', {
+    role: 'Renders a restaurant\'s full menu in two modes: "Best for you" (scored buckets) and "All menu items" (searchable list + tally).',
+    plain: 'The menu screen for one restaurant. Toggle between "show me the best picks for my goal" and "show everything, let me browse and add up a meal".',
+    path: 'src/pages/RestaurantDetail.tsx:46',
+    notes: ['Always scores against demoUser (line 111), never the locally-edited profile from useProfile.', 'Selecting items builds a running calorie/protein tally shown in a sticky footer (line 156).'],
+    tag: ['recommend', 'discovery', 'all'],
+    critical: true,
+  }),
+  N('item-detail', 'routes', 'ItemDetail.tsx', '/item/:restaurantId/:itemId', 300, 240, 190, 70, 'route', {
+    role: 'Single-item detail: macros, audit metadata, and up to 3 "Healthier Swaps" — other items at the same restaurant that score higher.',
+    plain: 'The deep-dive page for one menu item: its exact macros, when it was last verified, and better alternatives if any exist.',
+    path: 'src/pages/ItemDetail.tsx:26',
+    notes: ['Swaps (line 49) are scored against demoUser, not the user\'s real saved profile.', '"Report an issue" (line 129) only console.logs — there is no backend to actually receive reports.'],
+    tag: ['recommend', 'verification', 'all'],
+    critical: true,
+  }),
+  N('menu', 'routes', 'Menu.tsx', '/menu', 510, 240, 190, 70, 'route', {
+    role: 'Cross-restaurant "Suggested Meals" feed — every verified item/combo from every restaurant, scored and sorted for the user.',
+    plain: 'A single feed mixing picks from every restaurant, best-fit-for-you first — like a personalized "for you" tab across the whole app.',
+    path: 'src/pages/Menu.tsx:8',
+    notes: ['Backs onto suggestedMealsFeed (lib/recommend.ts:171), which flattens every restaurant\'s recommendables into one sorted list.'],
+    tag: ['recommend', 'menu', 'all'],
+  }),
+  N('profile', 'routes', 'Profile.tsx', '/profile', 300, 340, 190, 70, 'route', {
+    role: 'Settings hub: shows saved body stats/goal, daily macro targets, and links to four sub-pages.',
+    plain: 'Your account screen — see your stats and daily targets, and jump into editing, terms, privacy, or the "how we verify data" page.',
+    path: 'src/pages/Profile.tsx:19',
+    notes: ['Reads straight from useProfile (the locally-saved profile), unlike RestaurantDetail/ItemDetail which hardcode demoUser.'],
+    tag: ['profile', 'all'],
+  }),
+  N('profile-preferences', 'routes', 'ProfilePreferences.tsx', '/profile/preferences', 510, 340, 190, 70, 'route', {
+    role: 'Edit form for body stats/goal; recomputes daily targets via computeTargets on every change and writes back through useProfile.',
+    plain: 'Where you update your height, weight, age, or goal — your daily calorie/protein targets recalculate instantly.',
+    path: 'src/pages/ProfilePreferences.tsx:8',
+    notes: ['handleChange (line 12) merges the patch and recomputed targets in one localStorage write.'],
+    tag: ['profile', 'all'],
+  }),
+  N('profile-data', 'routes', 'ProfileData.tsx', '/profile/data', 300, 440, 190, 70, 'route', {
+    role: 'Static trust page listing verified vs. audit-pending restaurants, sourced live from src/data/restaurants.ts.',
+    plain: 'The "we don\'t use AI, we hand-check every number" explainer page, with a live list of which restaurants are done vs. still being checked.',
+    path: 'src/pages/ProfileData.tsx:5',
+    notes: ['Splits restaurants by status field (line 7-8) — purely derived, no separate data source.'],
+    tag: ['verification', 'all'],
+  }),
+  N('profile-terms', 'routes', 'ProfileTerms.tsx', '/profile/terms', 510, 440, 190, 70, 'route', {
+    role: 'Static legal text, no data dependency.',
+    plain: 'A plain terms-and-conditions page — just text, nothing dynamic.',
+    path: 'src/pages/ProfileTerms.tsx:4',
+    notes: ['No props, no hooks — the simplest page in the app.'],
+    tag: ['profile', 'all'],
+  }),
+  N('profile-privacy', 'routes', 'ProfilePrivacy.tsx', '/profile/privacy', 300, 540, 190, 70, 'route', {
+    role: 'Static legal text, no data dependency.',
+    plain: 'A plain privacy-policy page asserting that all data stays on-device.',
+    path: 'src/pages/ProfilePrivacy.tsx:4',
+    notes: ['Claim "never sent to an external server" is consistent with the codebase: no fetch/axios calls exist anywhere in src/.'],
+    tag: ['profile', 'all'],
+  }),
+  N('page-placeholder', 'routes', 'PagePlaceholder.tsx', 'fallback UI', 510, 540, 190, 70, 'route', {
+    role: 'Generic "Coming soon" / not-found fallback rendered when a restaurant or item id doesn\'t resolve.',
+    plain: 'The "nothing here" screen shown when a link points at a restaurant or item that doesn\'t exist in the seed data.',
+    path: 'src/pages/PagePlaceholder.tsx:1',
+    notes: ['Used by RestaurantDetail (line 116) and ItemDetail (line 65) as their not-found state.'],
+    tag: ['all'],
+  }),
+
+  // -------------------- STATE (HOOKS) --------------------
+  N('use-onboarding', 'state', 'useOnboarding.ts', 'localStorage flag', 760, 40, 200, 60, 'service', {
+    role: 'Two plain functions — hasOnboarded()/markOnboarded() — reading/writing a single boolean localStorage key.',
+    plain: 'Remembers whether you\'ve finished the welcome questionnaire, so it only shows once.',
+    path: 'src/hooks/useOnboarding.ts:1',
+    notes: ['Not a React hook despite the filename/folder — no useState/useEffect, just two functions.', 'Key: "macromenu.hasOnboarded" (line 1).'],
+    tag: ['profile', 'all'],
+    critical: true,
+  }),
+  N('use-profile', 'state', 'useProfile.ts', 'profile persistence', 760, 140, 200, 70, 'service', {
+    role: 'React hook backing the editable UserProfile in localStorage, seeded from demoUser, persisted on every change.',
+    plain: 'Keeps your saved stats/goals/targets in the browser so they survive a page reload.',
+    path: 'src/hooks/useProfile.ts:17',
+    notes: ['readProfile (line 7) merges stored JSON over demoUser, so new demoUser fields auto-backfill old saves.', 'Silently falls back to demoUser if localStorage is unavailable or corrupted (line 10-12).'],
+    tag: ['profile', 'all'],
+  }),
+  N('use-favorites', 'state', 'useFavorites.ts', 'favorites persistence', 760, 240, 200, 70, 'service', {
+    role: 'React hook for the favorited-restaurant id list, persisted to localStorage, seeded from demoUser.favorites.',
+    plain: 'Remembers which restaurants you\'ve hearted.',
+    path: 'src/hooks/useFavorites.ts:16',
+    notes: ['Key: "macromenu.favorites" (line 4) — a separate localStorage entry from the profile.', 'toggleFavorite (line 23) is a simple add/remove against an array, no Set.'],
+    tag: ['discovery', 'all'],
+  }),
+
+  // -------------------- COMPONENTS --------------------
+  N('root-layout', 'components', 'RootLayout.tsx', 'layout / onboarding gate', 1040, 40, 220, 70, 'service', {
+    role: 'Route-level layout: redirects to /onboarding if not yet onboarded, wraps every screen in PhoneFrame + StatusBar + conditional BottomNav.',
+    plain: 'The picture-frame around every screen — also the bouncer that sends first-time users to the welcome flow before anything else.',
+    path: 'src/components/layout/RootLayout.tsx:9',
+    notes: ['Gate check (line 13) reads hasOnboarded() synchronously on every render — no loading state needed since localStorage is sync.', 'Bottom nav only shows on the 3 tab routes (line 7, 11).'],
+    tag: ['overview', 'profile', 'all'],
+    critical: true,
+  }),
+  N('bottom-nav', 'components', 'BottomNav.tsx', '3-tab nav', 1280, 40, 220, 70, 'service', {
+    role: 'Fixed 3-tab bottom navigation (Home / Menu / Profile) using NavLink active styling.',
+    plain: 'The three buttons fixed to the bottom of the screen for jumping between Home, Menu, and Profile.',
+    path: 'src/components/layout/BottomNav.tsx:11',
+    notes: ['Exactly 3 tabs (line 5-9) — matches CLAUDE.md\'s "no Coach/chat tab" rule exactly.'],
+    tag: ['overview', 'all'],
+  }),
+  N('status-bar', 'components', 'StatusBar.tsx', 'fake iOS status bar', 1520, 40, 200, 70, 'service', {
+    role: 'Cosmetic fake iOS status bar (hardcoded "10:51", 5G, full battery) for the phone-frame mockup look.',
+    plain: 'The fake clock/signal/battery icons at the top, purely for the "looks like a real phone" effect.',
+    path: 'src/components/layout/StatusBar.tsx:3',
+    notes: ['Time is hardcoded to "10:51" (line 6) — never reflects the real clock.'],
+    tag: ['overview', 'all'],
+  }),
+  N('phone-frame', 'components', 'PhoneFrame.tsx', 'device chrome', 1040, 140, 220, 60, 'service', {
+    role: 'Wraps the whole app in a rounded-corner phone bezel on desktop; collapses to full-bleed below 480px.',
+    plain: 'Draws the black phone-shaped border around the whole app when viewed on a wide screen.',
+    path: 'src/components/layout/PhoneFrame.tsx:3',
+    notes: ['max-[480px] breakpoint strips the bezel for real mobile viewports (line 9-10).'],
+    tag: ['overview', 'all'],
+  }),
+  N('bottom-sheet', 'components', 'BottomSheet.tsx', 'modal sheet', 1280, 140, 220, 60, 'service', {
+    role: 'Reusable slide-up modal: backdrop + translate-y transition, controlled via open/onClose props.',
+    plain: 'The reusable popup that slides up from the bottom — used for filters, city picker, and confirmation messages.',
+    path: 'src/components/layout/BottomSheet.tsx:11',
+    notes: ['Used by Home (city/filter/audit sheets) and RestaurantDetail (best-for-you/source sheets) — same component, different content.'],
+    tag: ['discovery', 'all'],
+  }),
+  N('pill', 'components', 'Pill.tsx', 'segmented control', 1520, 140, 200, 60, 'service', {
+    role: 'Generic segmented-control selector driven entirely by an options[] prop.',
+    plain: 'The rounded toggle buttons (like "Best for you" vs "All menu items") used in several places.',
+    path: 'src/components/badges/Pill.tsx:15',
+    notes: ['Used by RestaurantDetail (best/all toggle) and ProfileFieldsForm (sex/goal selectors) — same generic component.'],
+    tag: ['recommend', 'profile', 'all'],
+  }),
+  N('price-tier', 'components', 'PriceTier.tsx', '$ badge', 1040, 240, 220, 60, 'service', {
+    role: 'Renders n "$" symbols for a restaurant\'s priceTier.',
+    plain: 'Shows $ or $$ next to a restaurant to indicate roughly how expensive it is.',
+    path: 'src/components/badges/PriceTier.tsx:3',
+    notes: ['Prop type allows 1 | 2 | 3 (line 3) but the seed data (restaurants.ts) only ever sets priceTier 1 or 2 — the "$$$" tier is unreachable with current data.'],
+    tag: ['discovery', 'all'],
+  }),
+  N('status-badge', 'components', 'StatusBadge.tsx', 'open/closed pill', 1280, 240, 220, 60, 'service', {
+    role: 'Two-state colored pill for a restaurant\'s open/closed status.',
+    plain: 'The green "Open" / red "Closed" tag on a restaurant card.',
+    path: 'src/components/badges/StatusBadge.tsx:3',
+    notes: ['Pure presentational — takes the already-computed open boolean as a literal union, no business logic.'],
+    tag: ['discovery', 'all'],
+  }),
+  N('verified-badge', 'components', 'VerifiedBadge.tsx', 'trust badge', 1520, 240, 200, 60, 'service', {
+    role: 'Static "Verified" pill with a checkmark icon — no props besides rendering.',
+    plain: 'The little blue checkmark + "Verified" label that appears on audited menu items.',
+    path: 'src/components/badges/VerifiedBadge.tsx:3',
+    notes: ['Renders unconditionally wherever mounted — callers gate visibility with verified && <VerifiedBadge/>.'],
+    tag: ['verification', 'all'],
+  }),
+  N('macro-grid', 'components', 'MacroGrid.tsx', '2x2 macro tiles', 1040, 340, 220, 60, 'service', {
+    role: '2×2 grid of calorie/protein/carbs/fat tiles, each with an icon and the four standard macro colors.',
+    plain: 'The four colored boxes showing calories, protein, carbs, and fat for one item.',
+    path: 'src/components/macro/MacroGrid.tsx:18',
+    notes: ['Color/icon mapping (line 11-16) matches CLAUDE.md\'s mandated calorie=green/protein=blue/carbs=amber/fat=purple convention.'],
+    tag: ['recommend', 'verification', 'all'],
+    critical: true,
+  }),
+  N('macro-dot-stat', 'components', 'MacroDotStat.tsx', 'inline macro chip', 1280, 340, 220, 60, 'service', {
+    role: 'Single colored-dot + label + value row for one macro, used in the compact expanded-row view.',
+    plain: 'A small inline "● Protein: 28g" style chip.',
+    path: 'src/components/macro/MacroDotStat.tsx:15',
+    notes: ['Only consumer is RestaurantDetail\'s "All menu items" expanded row (RestaurantDetail.tsx:332-334) — a leaner alternative to MacroGrid for compact lists.'],
+    tag: ['recommend', 'all'],
+  }),
+  N('progress-ring', 'components', 'ProgressRing.tsx', 'SVG ring', 1520, 340, 200, 60, 'service', {
+    role: 'Generic two-circle SVG progress ring (track + animated arc) that accepts any color/percent/children.',
+    plain: 'The circular progress bar used for calorie/macro rings throughout the app.',
+    path: 'src/components/macro/ProgressRing.tsx:12',
+    notes: ['Pure SVG, no external chart library — stroke-dasharray math at line 22-23.'],
+    tag: ['profile', 'all'],
+  }),
+  N('score-badge', 'components', 'ScoreBadge.tsx', 'fit-score ring', 1040, 440, 220, 60, 'service', {
+    role: 'Self-contained 0-100 fit-score ring with its OWN hardcoded tier/color table, duplicating score.ts\'s scoreTier/scoreColor.',
+    plain: 'The circular score badge (e.g. "87 GREAT") shown on every recommended item.',
+    path: 'src/components/macro/ScoreBadge.tsx:3',
+    notes: ['DUPLICATE LOGIC: TIERS array (line 3-9) re-implements scoreTier()+scoreColor() from src/lib/score.ts instead of importing them.', 'Thresholds happen to match today, but a future tuning change to score.ts will silently desync from this component.'],
+    tag: ['recommend', 'all'],
+    critical: true,
+  }),
+  N('why-this-pick', 'components', 'WhyThisPick.tsx', 'insight banner', 1280, 440, 220, 60, 'service', {
+    role: 'Gradient-header card wrapping a single sentence of pre-computed explanation text.',
+    plain: 'The "Why this pick" banner with a one-sentence explanation of why an item fits your goal.',
+    path: 'src/components/macro/WhyThisPick.tsx:3',
+    notes: ['Purely presentational — the actual sentence is computed by whyThisPick() in lib/recommend.ts.'],
+    tag: ['recommend', 'all'],
+  }),
+  N('macro-row', 'components', 'MacroRow.tsx', 'DEAD, zero callers', 1520, 440, 200, 60, 'service', {
+    role: 'Four-column inline cal/protein/carbs/fat stat row — fully built but never imported anywhere.',
+    plain: 'An alternative "stats in a row" macro display that was built but is not actually used on any screen.',
+    path: 'src/components/macro/MacroRow.tsx:15',
+    notes: ['Zero importers found in src/ — MacroGrid and MacroDotStat cover the same data on every page that needs it.', 'Likely superseded by MacroGrid during development and left behind.'],
+    tag: ['all'],
+  }),
+  N('mood-chip', 'components', 'MoodChip.tsx', 'cuisine filter chip', 1040, 540, 220, 60, 'service', {
+    role: 'Toggleable emoji+label chip used for cuisine/craving selection.',
+    plain: 'The "🍗 Chicken" style pill you tap to filter by protein type.',
+    path: 'src/components/restaurant/MoodChip.tsx:10',
+    notes: ['Shared verbatim between Home\'s "in the mood for" filter and Onboarding\'s "cravings" step (same MOODS/CRAVINGS value lists).'],
+    tag: ['discovery', 'profile', 'all'],
+  }),
+  N('recommendation-card', 'components', 'RecommendationCard.tsx', 'pick card', 1280, 540, 220, 60, 'service', {
+    role: 'Composite card combining ScoreBadge + MacroGrid + WhyThisPick + VerifiedBadge for one scored pick.',
+    plain: 'The full recommendation card you see in "Best for you" and the Suggested Meals feed — score, macros, and the reasoning, all in one card.',
+    path: 'src/components/restaurant/RecommendationCard.tsx:24',
+    notes: ['showOrderNow prop (line 21, 72-83) adds a CTA button only used on the cross-restaurant Menu feed, not within a single restaurant.'],
+    tag: ['recommend', 'menu', 'all'],
+    critical: true,
+  }),
+  N('restaurant-card', 'components', 'RestaurantCard.tsx', 'favoritable card', 1040, 640, 220, 60, 'service', {
+    role: 'Restaurant tile with open/closed badge, heart-toggle favorite button, distance, and price tier.',
+    plain: 'The bigger restaurant card used in "Near Me", "Favorites", and "Most Popular" rows, with a tap-to-favorite heart.',
+    path: 'src/components/restaurant/RestaurantCard.tsx:15',
+    notes: ['Heart click calls e.stopPropagation() (line 44) so tapping it doesn\'t also navigate into the restaurant.'],
+    tag: ['discovery', 'all'],
+  }),
+  N('restaurant-list-row', 'components', 'RestaurantListRow.tsx', 'search result row', 1280, 640, 220, 60, 'service', {
+    role: 'Horizontal list-row variant of a restaurant card, used only for search/mood-filtered results.',
+    plain: 'The simpler list-style row shown when you\'re actively searching or filtering by mood.',
+    path: 'src/components/restaurant/RestaurantListRow.tsx:13',
+    notes: ['No favorite-toggle — unlike RestaurantCard, this variant is read-only/navigate-only.'],
+    tag: ['discovery', 'all'],
+  }),
+  N('restaurant-logo-card', 'components', 'RestaurantLogoCard.tsx', 'logo-only tile', 1520, 640, 200, 60, 'service', {
+    role: 'Minimal logo-tile-plus-name component for the dense "Fast Food Restaurants" row.',
+    plain: 'The small square logo tiles in the top "Fast Food Restaurants" row.',
+    path: 'src/components/restaurant/RestaurantLogoCard.tsx:10',
+    notes: ['Smallest of the three restaurant card variants — no status/price/favorite info shown.'],
+    tag: ['discovery', 'all'],
+  }),
+  N('restaurant-visuals', 'components', 'restaurantVisuals.ts', 'deterministic color/initial', 1040, 740, 220, 60, 'service', {
+    role: 'Pure functions deriving a stable Tailwind background class and display initial from a restaurant id/name — no logo assets exist.',
+    plain: 'Picks a consistent color and letter for each restaurant since there are no real logo images yet.',
+    path: 'src/components/restaurant/restaurantVisuals.ts:14',
+    notes: ['LATENT BUG (low severity): restaurantInitial\'s regex at line 20 has no /g flag, so .replace only strips the FIRST non-alphanumeric character before taking charAt(0) — a name starting with 2+ symbols would still yield the wrong initial. No current seed name triggers it, but it would resurface with a new restaurant like "(New) Diner".'],
+    tag: ['discovery', 'all'],
+  }),
+  N('profile-fields-form', 'components', 'ProfileFieldsForm.tsx', 'shared stats form', 1280, 740, 220, 60, 'service', {
+    role: 'Shared goal/height/weight/age/sex/activity form, with showGoal/showStats toggles so Onboarding can split it across steps.',
+    plain: 'The body-stats and goal form reused by both the onboarding wizard and the "Edit Preferences" settings screen.',
+    path: 'src/components/profile/ProfileFieldsForm.tsx:55',
+    notes: ['One component, two contexts — Onboarding renders it twice (showStats=false then showGoal=false) to split it into separate steps (Onboarding.tsx:103,110).'],
+    tag: ['profile', 'all'],
+  }),
+  N('total-daily-macros', 'components', 'TotalDailyMacrosCard.tsx', 'daily targets card', 1520, 740, 220, 60, 'service', {
+    role: 'Calorie ring + protein/carbs/fat sub-rings showing daily targets as % of total calories.',
+    plain: 'The card with the big circular calorie ring and three smaller macro rings showing your daily targets.',
+    path: 'src/components/profile/TotalDailyMacrosCard.tsx:19',
+    notes: ['Reused verbatim by Profile, ProfilePreferences, and the Onboarding "targets" step — identical component, identical props shape.'],
+    tag: ['profile', 'all'],
+  }),
+
+  // -------------------- LOGIC (src/lib) --------------------
+  N('tdee', 'logic', 'tdee.ts', 'Mifflin-St Jeor math', 1840, 40, 260, 80, 'service', {
+    role: 'Pure functions: BMR (Mifflin-St Jeor) → TDEE (×activity multiplier) → goal-adjusted calories → protein/carbs/fat gram split.',
+    plain: 'The math that turns your height/weight/age/sex/activity/goal into a daily calorie number and gram targets for protein, carbs, and fat.',
+    path: 'src/lib/tdee.ts:36',
+    notes: ['Cut = −20% calories, bulk = +10%, maintain = TDEE as-is (line 47-51).', 'Macro splits per goal are fixed fractions (line 16-20), not personalized beyond the goal choice.'],
+    tag: ['profile', 'all'],
+  }),
+  N('score', 'logic', 'score.ts', 'fit-score engine', 1840, 160, 260, 100, 'service', {
+    role: 'Computes a 0-100 fit score from 4 weighted sub-scores (protein density, calorie fit, protein adequacy, macro balance), goal-dependent weights.',
+    plain: 'The brain that decides how good a menu item is for YOUR specific goal — not just "low calorie" but tuned toward protein-dense picks.',
+    path: 'src/lib/score.ts:66',
+    notes: ['Weights are deliberately density-forward (line 24-31) — comment explains this was hand-tuned so example picks land in the 90s.', 'scoreTier (line 105) and scoreColor (line 121) are exported but have ZERO callers — ScoreBadge.tsx reimplements both with its own hardcoded table instead of importing these.'],
+    tag: ['recommend', 'all'],
+    critical: true,
+  }),
+  N('recommend', 'logic', 'recommend.ts', 'recommendation engine', 1840, 300, 260, 110, 'service', {
+    role: 'Merges menu items + combos into a scorable shape, ranks them with fitScore, and groups into goal-based buckets (Best For Me, High Protein, etc).',
+    plain: 'Takes the raw menu, scores every item/combo for your goal, and sorts everything into the "Best for you" sections you see in the app.',
+    path: 'src/lib/recommend.ts:38',
+    notes: ['restaurantRecommendables (line 38) deliberately excludes Chipotle "Components" category — those are bowl ingredients, not orderable on their own.', 'suggestedMealsFeed (line 171) is the cross-restaurant version used only by Menu.tsx.', 'whyThisPick (line 98) is template-based text generation from real macro math, not an LLM.'],
+    tag: ['recommend', 'menu', 'all'],
+    critical: true,
+  }),
+  N('utils', 'logic', 'utils.ts', 'cn() + formatCalories()', 1840, 440, 260, 60, 'service', {
+    role: 'Tiny shared helpers: cn() merges Tailwind classes (clsx+twMerge), formatCalories() abbreviates large numbers ("3120"→"3.1K").',
+    plain: 'Small formatting helpers used everywhere — like turning 3120 into "3.1K" for the calorie ring.',
+    path: 'src/lib/utils.ts:9',
+    notes: ['formatCalories only used by TotalDailyMacrosCard\'s central ring label.'],
+    tag: ['all'],
+  }),
+
+  // -------------------- DATA --------------------
+  N('data-types', 'data', 'types.ts', 'TS data models', 2180, 40, 260, 70, 'db', {
+    role: 'Source-of-truth TypeScript interfaces: Macros, MenuItem, Combo, Restaurant, UserProfile.',
+    plain: 'The blueprint that defines exactly what fields a restaurant, menu item, or user profile must have.',
+    path: 'src/data/types.ts:24',
+    notes: ['Macros (line 24) is the single shape every macro display in the UI ultimately conforms to.', 'needsVerify field (line 41) is set on several seed items but read by ZERO components — the SPEC §9 "(verify)" flag never surfaces in the UI.'],
+    tag: ['all'],
+  }),
+  N('data-index', 'data', 'data/index.ts', 'barrel export', 2180, 150, 260, 60, 'db', {
+    role: 'Single import surface re-exporting types + restaurants/menuItems/combos + demoUser.',
+    plain: 'The single front door for all the app\'s data — every component imports from here instead of reaching into individual files.',
+    path: 'src/data/index.ts:5',
+    notes: ['Comment explicitly calls out this indirection as future-proofing for swapping the seed for a real database.'],
+    tag: ['all'],
+  }),
+  N('restaurants-data', 'data', 'restaurants.ts', 'seeded menu data', 2180, 250, 260, 90, 'db', {
+    role: '431-line hand-authored seed: 10 restaurants (3 verified, 7 auditPending) plus every verified menu item/combo, copied verbatim from SPEC.md §9.',
+    plain: 'The actual database — every restaurant and every menu item\'s real calories/protein/carbs/fat, by hand, never computed or guessed.',
+    path: 'src/data/restaurants.ts:20',
+    notes: ['Only Chick-fil-A, McDonald\'s, and Chipotle have menuItems/combos seeded — the other 7 restaurants exist as list entries only (status: auditPending, line 64-135).', 'needsVerify=true flags 8+ items (e.g. line 215, 216, 219, 221, 223) that SPEC.md marked "(verify)" — flows into MenuItem but nothing downstream reads it.'],
+    tag: ['verification', 'all'],
+    critical: true,
+  }),
+  N('user-data', 'data', 'user.ts', 'seeded demo profile', 2180, 360, 260, 70, 'db', {
+    role: 'The hardcoded demoUser UserProfile (Ethan, 175lb, maintain) used as the default/fallback profile everywhere.',
+    plain: 'The pretend "demo person" the app is pre-loaded with so it\'s never empty on first launch.',
+    path: 'src/data/user.ts:9',
+    notes: ['RestaurantDetail and ItemDetail score against this hardcoded demoUser even after onboarding — they never read the locally-saved profile from useProfile.'],
+    tag: ['profile', 'recommend', 'all'],
+  }),
+];
+
+const edges = [
+  // entry
+  { from: 'main', to: 'app', kind: 'critical', label: 'render <App/>', tag: ['overview','all'] },
+  { from: 'app', to: 'root-layout', kind: 'mount', label: 'mount <RootLayout>', tag: ['overview','all'] },
+
+  // root layout gate + frame
+  { from: 'root-layout', to: 'use-onboarding', kind: 'critical', label: 'hasOnboarded()', tag: ['overview','profile','all'] },
+  { from: 'root-layout', to: 'phone-frame', kind: 'normal', label: 'wraps', tag: ['overview','all'] },
+  { from: 'root-layout', to: 'status-bar', kind: 'normal', label: 'renders', tag: ['overview','all'] },
+  { from: 'root-layout', to: 'bottom-nav', kind: 'normal', label: 'renders (3 tabs)', tag: ['overview','all'] },
+
+  // route mounts
+  { from: 'root-layout', to: 'onboarding', kind: 'mount', label: 'Outlet → /onboarding', tag: ['profile','all'] },
+  { from: 'root-layout', to: 'home', kind: 'critical', label: 'Outlet → /', tag: ['overview','discovery','all'] },
+  { from: 'root-layout', to: 'restaurant-loading', kind: 'mount', label: 'Outlet → /restaurant/:id/loading', tag: ['discovery','all'] },
+  { from: 'root-layout', to: 'restaurant-detail', kind: 'mount', label: 'Outlet → /restaurant/:id', tag: ['recommend','all'] },
+  { from: 'root-layout', to: 'item-detail', kind: 'mount', label: 'Outlet → /item/:rid/:iid', tag: ['recommend','all'] },
+  { from: 'root-layout', to: 'menu', kind: 'mount', label: 'Outlet → /menu', tag: ['menu','all'] },
+  { from: 'root-layout', to: 'profile', kind: 'mount', label: 'Outlet → /profile', tag: ['profile','all'] },
+  { from: 'root-layout', to: 'profile-preferences', kind: 'mount', label: 'Outlet → /profile/preferences', tag: ['profile','all'] },
+  { from: 'root-layout', to: 'profile-data', kind: 'mount', label: 'Outlet → /profile/data', tag: ['verification','all'] },
+  { from: 'root-layout', to: 'profile-terms', kind: 'mount', label: 'Outlet → /profile/terms', tag: ['profile','all'] },
+  { from: 'root-layout', to: 'profile-privacy', kind: 'mount', label: 'Outlet → /profile/privacy', tag: ['profile','all'] },
+  { from: 'restaurant-detail', to: 'page-placeholder', kind: 'normal', label: 'not-found fallback', tag: ['all'] },
+  { from: 'item-detail', to: 'page-placeholder', kind: 'normal', label: 'not-found fallback', tag: ['all'] },
+
+  // critical user flow: Home -> loading -> detail -> item
+  { from: 'home', to: 'restaurant-loading', kind: 'critical', label: 'navigate(/restaurant/:id/loading)', tag: ['discovery','overview','all'] },
+  { from: 'restaurant-loading', to: 'restaurant-detail', kind: 'critical', label: 'navigate(/restaurant/:id)', tag: ['discovery','recommend','all'] },
+  { from: 'restaurant-detail', to: 'item-detail', kind: 'critical', label: 'navigate(/item/:rid/:iid)', tag: ['recommend','all'] },
+  { from: 'menu', to: 'item-detail', kind: 'normal', label: 'navigate(/item/:rid/:iid)', tag: ['menu','recommend','all'] },
+
+  // page -> hooks
+  { from: 'home', to: 'use-favorites', kind: 'normal', label: 'favorites, toggleFavorite()', tag: ['discovery','all'] },
+  { from: 'restaurant-detail', to: 'use-favorites', kind: 'normal', label: 'isFavorite, toggleFavorite()', tag: ['discovery','all'] },
+  { from: 'onboarding', to: 'use-profile', kind: 'normal', label: 'updateProfile(draft)', tag: ['profile','all'] },
+  { from: 'onboarding', to: 'use-onboarding', kind: 'critical', label: 'markOnboarded()', tag: ['profile','all'] },
+  { from: 'profile', to: 'use-profile', kind: 'normal', label: 'profile', tag: ['profile','all'] },
+  { from: 'profile-preferences', to: 'use-profile', kind: 'normal', label: 'profile, updateProfile()', tag: ['profile','all'] },
+
+  // hooks -> data
+  { from: 'use-profile', to: 'data-index', kind: 'db', label: 'seed: demoUser', tag: ['profile','all'] },
+  { from: 'use-favorites', to: 'data-index', kind: 'db', label: 'seed: demoUser.favorites', tag: ['discovery','all'] },
+
+  // page -> logic (recommend / score / tdee)
+  { from: 'restaurant-detail', to: 'recommend', kind: 'critical', label: 'recommendationBuckets()', tag: ['recommend','all'] },
+  { from: 'restaurant-detail', to: 'recommend', kind: 'normal', label: 'whyThisPick()', tag: ['recommend','all'] },
+  { from: 'item-detail', to: 'recommend', kind: 'critical', label: 'restaurantRecommendables()', tag: ['recommend','all'] },
+  { from: 'item-detail', to: 'score', kind: 'critical', label: 'fitScore()', tag: ['recommend','all'] },
+  { from: 'menu', to: 'recommend', kind: 'critical', label: 'suggestedMealsFeed()', tag: ['menu','recommend','all'] },
+  { from: 'onboarding', to: 'tdee', kind: 'normal', label: 'computeTargets()', tag: ['profile','all'] },
+  { from: 'profile-preferences', to: 'tdee', kind: 'normal', label: 'computeTargets()', tag: ['profile','all'] },
+
+  // logic internal
+  { from: 'recommend', to: 'score', kind: 'critical', label: 'fitScore() per pick', tag: ['recommend','all'] },
+  { from: 'score', to: 'tdee', kind: 'normal', label: 'MACRO_SPLITS', tag: ['recommend','all'] },
+
+  // logic -> data
+  { from: 'recommend', to: 'data-index', kind: 'db', label: 'read: menuItems, combos, restaurants', tag: ['recommend','all'] },
+
+  // data internal
+  { from: 'data-index', to: 'data-types', kind: 'normal', label: 're-export types', tag: ['all'] },
+  { from: 'data-index', to: 'restaurants-data', kind: 'db', label: 're-export seed', tag: ['verification','all'] },
+  { from: 'data-index', to: 'user-data', kind: 'db', label: 're-export demoUser', tag: ['profile','all'] },
+  { from: 'restaurants-data', to: 'data-types', kind: 'normal', label: 'implements Restaurant/MenuItem/Combo', tag: ['all'] },
+  { from: 'user-data', to: 'data-types', kind: 'normal', label: 'implements UserProfile', tag: ['all'] },
+
+  // page -> components (key wires)
+  { from: 'home', to: 'restaurant-card', kind: 'normal', label: 'render rows', tag: ['discovery','all'] },
+  { from: 'home', to: 'restaurant-logo-card', kind: 'normal', label: 'render row', tag: ['discovery','all'] },
+  { from: 'home', to: 'restaurant-list-row', kind: 'normal', label: 'render search results', tag: ['discovery','all'] },
+  { from: 'home', to: 'mood-chip', kind: 'normal', label: 'render mood filter', tag: ['discovery','all'] },
+  { from: 'home', to: 'bottom-sheet', kind: 'normal', label: 'city/filter/audit sheets', tag: ['discovery','all'] },
+  { from: 'restaurant-detail', to: 'recommendation-card', kind: 'critical', label: 'render bucket items', tag: ['recommend','all'] },
+  { from: 'restaurant-detail', to: 'macro-dot-stat', kind: 'normal', label: 'expanded row macros', tag: ['recommend','all'] },
+  { from: 'restaurant-detail', to: 'bottom-sheet', kind: 'normal', label: 'best-for-you / source sheets', tag: ['recommend','all'] },
+  { from: 'restaurant-detail', to: 'pill', kind: 'normal', label: 'best/all mode toggle', tag: ['recommend','all'] },
+  { from: 'restaurant-detail', to: 'status-badge', kind: 'normal', label: 'open/closed', tag: ['discovery','all'] },
+  { from: 'restaurant-detail', to: 'price-tier', kind: 'normal', label: '$ tier', tag: ['discovery','all'] },
+  { from: 'item-detail', to: 'score-badge', kind: 'critical', label: 'render fit score', tag: ['recommend','all'] },
+  { from: 'item-detail', to: 'macro-grid', kind: 'critical', label: 'render macros', tag: ['recommend','all'] },
+  { from: 'item-detail', to: 'verified-badge', kind: 'normal', label: 'verified && …', tag: ['verification','all'] },
+  { from: 'menu', to: 'recommendation-card', kind: 'critical', label: 'render feed picks', tag: ['menu','recommend','all'] },
+  { from: 'profile', to: 'total-daily-macros', kind: 'normal', label: 'render targets', tag: ['profile','all'] },
+  { from: 'profile-preferences', to: 'profile-fields-form', kind: 'normal', label: 'render form', tag: ['profile','all'] },
+  { from: 'profile-preferences', to: 'total-daily-macros', kind: 'normal', label: 'render targets', tag: ['profile','all'] },
+  { from: 'onboarding', to: 'profile-fields-form', kind: 'normal', label: 'goal + stats steps', tag: ['profile','all'] },
+  { from: 'onboarding', to: 'total-daily-macros', kind: 'normal', label: 'targets step', tag: ['profile','all'] },
+  { from: 'onboarding', to: 'mood-chip', kind: 'normal', label: 'cravings step', tag: ['profile','all'] },
+
+  // component internal composition
+  { from: 'recommendation-card', to: 'score-badge', kind: 'normal', label: 'compose', tag: ['recommend','all'] },
+  { from: 'recommendation-card', to: 'macro-grid', kind: 'normal', label: 'compose', tag: ['recommend','all'] },
+  { from: 'recommendation-card', to: 'why-this-pick', kind: 'normal', label: 'compose', tag: ['recommend','all'] },
+  { from: 'recommendation-card', to: 'verified-badge', kind: 'normal', label: 'compose', tag: ['recommend','verification','all'] },
+  { from: 'total-daily-macros', to: 'progress-ring', kind: 'normal', label: 'compose (×4 rings)', tag: ['profile','all'] },
+  { from: 'profile-fields-form', to: 'pill', kind: 'normal', label: 'compose (sex/goal)', tag: ['profile','all'] },
+  { from: 'restaurant-card', to: 'restaurant-visuals', kind: 'normal', label: 'color + initial', tag: ['discovery','all'] },
+  { from: 'restaurant-list-row', to: 'restaurant-visuals', kind: 'normal', label: 'color + initial', tag: ['discovery','all'] },
+  { from: 'restaurant-logo-card', to: 'restaurant-visuals', kind: 'normal', label: 'color + initial', tag: ['discovery','all'] },
+  { from: 'restaurant-card', to: 'status-badge', kind: 'normal', label: 'compose', tag: ['discovery','all'] },
+  { from: 'restaurant-card', to: 'price-tier', kind: 'normal', label: 'compose', tag: ['discovery','all'] },
+];
+
+const FIXES = {
+  // none tracked yet — no roadmap doc found in the repo.
+};
+
+const KNOWN_BUGS = {
+  'score-badge': [
+    { sev: 'med', ref: 'ScoreBadge.tsx:3-9 / score.ts:105,121', t: 'ScoreBadge hardcodes its own tier/color table instead of importing scoreTier()/scoreColor() from lib/score.ts — the two will silently drift if score.ts\'s thresholds change.' },
+  ],
+  'score': [
+    { sev: 'med', ref: 'score.ts:105,121', t: 'scoreTier() and scoreColor() are exported with zero callers — ScoreBadge.tsx duplicates their logic instead of using them.' },
+  ],
+  'macro-row': [
+    { sev: 'low', ref: 'MacroRow.tsx', t: 'Fully built component, zero importers anywhere in src/ — dead code.' },
+  ],
+  'data-types': [
+    { sev: 'med', ref: 'types.ts:41', t: 'MenuItem.needsVerify is set on several seed items (e.g. restaurants.ts:215,216,219,221,223) but no component anywhere reads it — SPEC.md\'s "(verify)" flag never reaches the UI.' },
+  ],
+  'restaurants-data': [
+    { sev: 'med', ref: 'restaurants.ts:215,216,219,221,223', t: 'needsVerify=true items are visually identical to fully-audited items — a user can\'t tell which numbers are flagged for re-check.' },
+  ],
+  'restaurant-visuals': [
+    { sev: 'low', ref: 'restaurantVisuals.ts:20', t: 'restaurantInitial()\'s regex lacks the /g flag, so only the first non-alphanumeric character is stripped before taking charAt(0). No current seed name triggers a wrong result, but a name starting with 2+ symbols would.' },
+  ],
+  'price-tier': [
+    { sev: 'low', ref: 'PriceTier.tsx:3 / types.ts:83', t: 'Component and type both allow priceTier 3 ("$$$") but the seed data never sets it — dead branch, unreachable with current data.' },
+  ],
+  'item-detail': [
+    { sev: 'low', ref: 'ItemDetail.tsx:131-133', t: '"Report an issue" only console.logs — there is no backend, so user reports go nowhere.' },
+  ],
+};
+
+// =====================================================================
+// CHIP DEFINITIONS
+// =====================================================================
+const CHIPS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'discovery', label: 'Discovery' },
+  { id: 'recommend', label: 'Recommendation Engine' },
+  { id: 'profile', label: 'Profile / Onboarding' },
+  { id: 'menu', label: 'Suggested Meals' },
+  { id: 'verification', label: 'Data Verification' },
+  { id: 'critical-path', label: 'Critical Path' },
+  { id: 'all', label: 'Show all wires' },
+  { id: 'bugs', label: 'Roadmap & bugs', isBugs: true },
+];
+
+let activeChip = 'overview';
+let selectedId = null;
+let hoveredId = null;
+
+const COLOR_MAP = {
+  client: 'var(--client)', route: 'var(--route)', service: 'var(--service)',
+  db: 'var(--db)', external: 'var(--external)',
+};
+const KIND_COLOR = { critical: 'var(--critical)', api: 'var(--accent-2)', db: 'var(--db)', mount: '#5bb8e8', normal: '#6b6b6b' };
+
+const nodeById = Object.fromEntries(nodes.map(n => [n.id, n]));
+
+// =====================================================================
+// SVG SETUP
+// =====================================================================
+const svg = document.getElementById('graph');
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs = {}) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+const CANVAS_W = 2500, CANVAS_H = 900;
+svg.setAttribute('width', CANVAS_W);
+svg.setAttribute('height', CANVAS_H);
+svg.setAttribute('viewBox', `0 0 ${CANVAS_W} ${CANVAS_H}`);
+
+const defs = svgEl('defs');
+['normal','critical','api','db','mount'].forEach(kind => {
+  const marker = svgEl('marker', {
+    id: `arrow-${kind}`, viewBox: '0 0 10 10', refX: 8, refY: 5,
+    markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse',
+  });
+  const path = svgEl('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: KIND_COLOR[kind] });
+  marker.appendChild(path);
+  defs.appendChild(marker);
+});
+svg.appendChild(defs);
+
+const worldGroup = svgEl('g', { id: 'world' });
+svg.appendChild(worldGroup);
+
+const clusterLayer = svgEl('g');
+const edgeLayer = svgEl('g');
+const nodeLayer = svgEl('g');
+worldGroup.appendChild(clusterLayer);
+worldGroup.appendChild(edgeLayer);
+worldGroup.appendChild(nodeLayer);
+
+// translate clusters/nodes down a bit for top padding, normalize y by +30
+const Y_OFFSET = 30;
+function ay(y) { return y + Y_OFFSET; }
+
+// ---- clusters ----
+clusters.forEach(c => {
+  const rect = svgEl('rect', {
+    x: c.x, y: ay(c.y), width: c.w, height: c.h, class: 'cluster-box',
+    fill: c.color, stroke: c.color,
+  });
+  clusterLayer.appendChild(rect);
+  const label = svgEl('text', { x: c.x + 14, y: ay(c.y) + 22, class: 'cluster-label' });
+  label.textContent = c.label;
+  clusterLayer.appendChild(label);
+});
+
+// ---- node center lookup ----
+function nodeCenter(n) {
+  return { x: n.x + n.w / 2, y: ay(n.y) + n.h / 2 };
+}
+function nodeAnchor(n, side) {
+  const y = ay(n.y) + n.h / 2;
+  return side === 'right' ? { x: n.x + n.w, y } : { x: n.x, y };
+}
+
+// ---- edges ----
+const edgeEls = [];
+edges.forEach((e, i) => {
+  const from = nodeById[e.from], to = nodeById[e.to];
+  if (!from || !to) return;
+  const goingRight = (from.x + from.w / 2) <= (to.x + to.w / 2);
+  const p1 = goingRight ? nodeAnchor(from, 'right') : nodeAnchor(from, 'left');
+  const p2 = goingRight ? nodeAnchor(to, 'left') : nodeAnchor(to, 'right');
+  const dx = Math.max(Math.abs(p2.x - p1.x) * 0.45, 40);
+  const c1x = p1.x + (goingRight ? dx : -dx);
+  const c2x = p2.x + (goingRight ? -dx : dx);
+  const d = `M ${p1.x} ${p1.y} C ${c1x} ${p1.y}, ${c2x} ${p2.y}, ${p2.x} ${p2.y}`;
+  const path = svgEl('path', {
+    d, class: 'edge-path', stroke: KIND_COLOR[e.kind] || KIND_COLOR.normal,
+    'marker-end': `url(#arrow-${e.kind || 'normal'})`,
+  });
+  edgeLayer.appendChild(path);
+
+  let labelEl = null;
+  if (e.label) {
+    const mt = 0.5 + ((i % 5) - 2) * 0.06; // stagger along curve
+    const lx = p1.x + (p2.x - p1.x) * mt;
+    const ly = p1.y + (p2.y - p1.y) * mt - 4;
+    labelEl = svgEl('text', { x: lx, y: ly, class: 'edge-label', 'text-anchor': 'middle' });
+    labelEl.textContent = e.label;
+    edgeLayer.appendChild(labelEl);
+  }
+  edgeEls.push({ e, path, labelEl });
+});
+
+// ---- nodes ----
+const nodeEls = {};
+nodes.forEach(n => {
+  const g = svgEl('g', { class: 'node-group', 'data-id': n.id });
+  const rect = svgEl('rect', {
+    x: n.x, y: ay(n.y), width: n.w, height: n.h,
+    class: 'node-rect' + (n.critical ? ' critical' : ''),
+    fill: 'rgba(255,255,255,0.03)', stroke: COLOR_MAP[n.color] || COLOR_MAP.service,
+  });
+  g.appendChild(rect);
+
+  const label = svgEl('text', { x: n.x + 10, y: ay(n.y) + 22, class: 'node-label' });
+  label.textContent = n.label;
+  g.appendChild(label);
+
+  const isDead = /DEAD/.test(n.sub || '');
+  const sub = svgEl('text', { x: n.x + 10, y: ay(n.y) + 38, class: 'node-sub' + (isDead ? ' dead' : '') });
+  sub.textContent = n.sub || '';
+  g.appendChild(sub);
+
+  // badges
+  const fixCount = (FIXES[n.id] || []).length;
+  const bugCount = (KNOWN_BUGS[n.id] || []).length;
+  let bx = n.x + n.w - 12;
+  if (bugCount > 0) {
+    const cy = ay(n.y) - 2;
+    g.appendChild(svgEl('circle', { cx: bx, cy, r: 9, class: 'badge-bug' }));
+    const t = svgEl('text', { x: bx, y: cy, class: 'badge-text' });
+    t.textContent = bugCount;
+    g.appendChild(t);
+    bx -= 22;
+  }
+  if (fixCount > 0) {
+    const cy = ay(n.y) - 2;
+    g.appendChild(svgEl('circle', { cx: bx, cy, r: 9, class: 'badge-fix' }));
+    const t = svgEl('text', { x: bx, y: cy, class: 'badge-text' });
+    t.textContent = fixCount;
+    g.appendChild(t);
+  }
+
+  g.addEventListener('mouseenter', () => { hoveredId = n.id; render(); });
+  g.addEventListener('mouseleave', () => { hoveredId = null; render(); });
+  g.addEventListener('click', (ev) => { ev.stopPropagation(); selectedId = (selectedId === n.id) ? null : n.id; render(); });
+
+  nodeLayer.appendChild(g);
+  nodeEls[n.id] = { g, rect };
+});
+
+svg.addEventListener('click', () => { selectedId = null; render(); });
+
+// =====================================================================
+// RENDER (filter + selection state)
+// =====================================================================
+function connectedIds(id) {
+  const set = new Set([id]);
+  edges.forEach(e => {
+    if (e.from === id) set.add(e.to);
+    if (e.to === id) set.add(e.from);
+  });
+  return set;
+}
+
+function render() {
+  const activeId = selectedId || hoveredId;
+  const focusSet = activeId ? connectedIds(activeId) : null;
+
+  nodes.forEach(n => {
+    const { g, rect } = nodeEls[n.id];
+    let visible = true;
+    if (activeChip === 'bugs') {
+      visible = (FIXES[n.id] || []).length > 0 || (KNOWN_BUGS[n.id] || []).length > 0;
+    } else if (activeChip === 'critical-path') {
+      visible = !!n.critical;
+    } else if (activeChip !== 'all') {
+      visible = (n.tag || []).includes(activeChip);
+    }
+    let dimmed = !visible;
+    if (focusSet && !focusSet.has(n.id)) dimmed = true;
+    rect.classList.toggle('dimmed', dimmed);
+    rect.classList.toggle('selected', n.id === selectedId);
+    g.classList.toggle('dimmed', dimmed);
+  });
+
+  edgeEls.forEach(({ e, path, labelEl }) => {
+    let visible = true;
+    if (activeChip === 'bugs') {
+      visible = false;
+    } else if (activeChip === 'critical-path') {
+      visible = e.kind === 'critical';
+    } else if (activeChip !== 'all') {
+      visible = (e.tag || []).includes(activeChip);
+    }
+    let dimmed = !visible;
+    let hi = false;
+    if (focusSet) {
+      const touches = focusSet.has(e.from) && focusSet.has(e.to) && (e.from === activeId || e.to === activeId);
+      if (!(e.from === activeId || e.to === activeId)) dimmed = true;
+      else hi = true;
+    }
+    path.classList.toggle('dimmed', dimmed);
+    path.classList.toggle('hi', hi);
+    if (labelEl) labelEl.classList.toggle('dimmed', dimmed);
+  });
+
+  renderSidebar(activeId);
+}
+
+// =====================================================================
+// SIDEBAR
+// =====================================================================
+const sidebar = document.getElementById('sidebar');
+
+function severityClass(sev) {
+  return sev === 'high' ? 'sev-high' : sev === 'med' ? 'sev-med' : 'sev-low';
+}
+
+function renderSidebar(activeId) {
+  if (!activeId) {
+    const deadNodes = nodes.filter(n => /DEAD/.test(n.sub || ''));
+    sidebar.innerHTML = `
+      <h2>MacroMenu</h2>
+      <div class="role">${nodes.length} nodes · ${edges.length} wires</div>
+      <div class="plain">A mobile-first restaurant macro app. Every calorie/protein/carb/fat number traces to <code>src/data/</code> — nothing is AI-generated or fetched live. No chat/assistant exists anywhere in the codebase.</div>
+      <h3>Notable findings from this map</h3>
+      <ul class="findings">
+        <li><strong>Duplicated scoring logic.</strong> <code>ScoreBadge.tsx</code> hardcodes its own tier/color table instead of calling <code>scoreTier()</code>/<code>scoreColor()</code> from <code>lib/score.ts</code> — those two exports have zero real callers as a result.</li>
+        <li><strong>Dead component.</strong> <code>MacroRow.tsx</code> is fully built (four-stat row) but is imported nowhere in <code>src/</code>.</li>
+        <li><strong>Schema/UI mismatch.</strong> <code>MenuItem.needsVerify</code> is set on 8+ seed items (e.g. <code>restaurants.ts:215</code>) but no component reads it — the SPEC's "(verify)" caution flag never reaches the screen.</li>
+        <li><strong>Two profiles, one used inconsistently.</strong> <code>RestaurantDetail</code>/<code>ItemDetail</code> always score against the hardcoded <code>demoUser</code>, while <code>Profile</code>/<code>ProfilePreferences</code> read the real locally-saved profile from <code>useProfile</code> — a user who edits their stats won't see it reflected in recommendations.</li>
+        <li><strong>Cosmetic-only controls.</strong> Home's city picker only swaps a label (single-city seed data); the restaurant-loading screen's progress bar is a timed animation, not real work.</li>
+      </ul>
+      <h3>Tip</h3>
+      <p class="empty-hint">Click any node to see its role, plain-English explanation, file path, notes, and wiring. Use the chips above to filter by feature area, or "Roadmap & bugs" to see only flagged nodes.</p>
+    `;
+    return;
+  }
+
+  const n = nodeById[activeId];
+  if (!n) return;
+  const incoming = edges.filter(e => e.to === activeId);
+  const outgoing = edges.filter(e => e.from === activeId);
+  const fixes = FIXES[activeId] || [];
+  const bugs = KNOWN_BUGS[activeId] || [];
+
+  sidebar.innerHTML = `
+    <h2>${n.label}${n.critical ? ' <span style="color:var(--critical);font-size:11px;">● critical path</span>' : ''}</h2>
+    <div class="role">${n.role || ''}</div>
+    <div class="plain">${n.plain || ''}</div>
+    <div class="path">${n.path || ''}</div>
+    <div>${(n.tag || []).map(t => `<span class="tag-pill">${t}</span>`).join('')}</div>
+    ${n.notes && n.notes.length ? `<h3>Notes</h3><ul>${n.notes.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}
+    <h3>Incoming (${incoming.length})</h3>
+    <div class="edge-list">${incoming.length ? incoming.map(e => `<div class="e-row"><span>${nodeById[e.from]?.label || e.from}</span><span>${e.label || e.kind}</span></div>`).join('') : '<div class="empty-hint">none</div>'}</div>
+    <h3>Outgoing (${outgoing.length})</h3>
+    <div class="edge-list">${outgoing.length ? outgoing.map(e => `<div class="e-row"><span>${nodeById[e.to]?.label || e.to}</span><span>${e.label || e.kind}</span></div>`).join('') : '<div class="empty-hint">none</div>'}</div>
+    ${bugs.length ? `<h3>Known issues</h3><ul>${bugs.map(b => `<li><span class="${severityClass(b.sev)}">[${b.sev.toUpperCase()}]</span> ${b.t}${b.ref ? ` <span style="color:var(--muted)">(${b.ref})</span>` : ''}</li>`).join('')}</ul>` : ''}
+    ${fixes.length ? `<h3>Planned fixes</h3><ul>${fixes.map(f => `<li>#${f.n} ${f.t}</li>`).join('')}</ul>` : ''}
+  `;
+}
+
+// =====================================================================
+// CHIP BAR
+// =====================================================================
+const chipsContainer = document.getElementById('chips');
+CHIPS.forEach(c => {
+  const btn = document.createElement('button');
+  btn.className = 'chip' + (c.isBugs ? ' bugs' : '') + (activeChip === c.id ? ' active' : '');
+  btn.textContent = c.label;
+  btn.addEventListener('click', () => {
+    activeChip = c.id;
+    document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+  chipsContainer.appendChild(btn);
+});
+
+// =====================================================================
+// PAN + ZOOM
+// =====================================================================
+let tx = 0, ty = 0, scale = 1;
+let isPanning = false, panStart = { x: 0, y: 0 };
+
+function applyTransform() {
+  worldGroup.setAttribute('transform', `translate(${tx} ${ty}) scale(${scale})`);
+}
+
+function fitToView() {
+  const wrap = document.getElementById('canvas-wrap');
+  const vw = wrap.clientWidth, vh = wrap.clientHeight;
+  const margin = 40;
+  const s = Math.min((vw - margin) / CANVAS_W, (vh - margin) / CANVAS_H);
+  scale = Math.max(Math.min(s, 1.2), 0.15);
+  tx = (vw - CANVAS_W * scale) / 2;
+  ty = (vh - CANVAS_H * scale) / 2;
+  applyTransform();
+}
+
+svg.addEventListener('mousedown', (ev) => {
+  if (ev.target.closest('.node-group')) return;
+  isPanning = true;
+  panStart = { x: ev.clientX - tx, y: ev.clientY - ty };
+  svg.classList.add('dragging');
+});
+window.addEventListener('mousemove', (ev) => {
+  if (!isPanning) return;
+  tx = ev.clientX - panStart.x;
+  ty = ev.clientY - panStart.y;
+  applyTransform();
+});
+window.addEventListener('mouseup', () => { isPanning = false; svg.classList.remove('dragging'); });
+
+svg.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const rect = svg.getBoundingClientRect();
+  const cx = ev.clientX - rect.left, cy = ev.clientY - rect.top;
+  const worldX = (cx - tx) / scale, worldY = (cy - ty) / scale;
+  const delta = ev.deltaY > 0 ? 0.9 : 1.1;
+  scale = Math.max(0.12, Math.min(3, scale * delta));
+  tx = cx - worldX * scale;
+  ty = cy - worldY * scale;
+  applyTransform();
+}, { passive: false });
+
+document.getElementById('zoom-in').addEventListener('click', () => {
+  scale = Math.min(3, scale * 1.2); applyTransform();
+});
+document.getElementById('zoom-out').addEventListener('click', () => {
+  scale = Math.max(0.12, scale * 0.8); applyTransform();
+});
+document.getElementById('zoom-fit').addEventListener('click', fitToView);
+
+window.addEventListener('resize', fitToView);
+
+// =====================================================================
+// INIT
+// =====================================================================
+fitToView();
+render();
+</script>
+</body>
+</html>
+
