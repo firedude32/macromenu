@@ -30,6 +30,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 1.2,
     open: true,
     priceTier: 1,
+    favoriteCount: 482,
   },
   {
     id: 'mcdonalds',
@@ -43,6 +44,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 0.8,
     open: true,
     priceTier: 1,
+    favoriteCount: 390,
   },
   {
     id: 'chipotle',
@@ -56,6 +58,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 2.1,
     open: true,
     priceTier: 2,
+    favoriteCount: 410,
   },
 
   // Audit in progress — listed in the app, but not tappable into a live menu
@@ -68,6 +71,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 1.5,
     open: true,
     priceTier: 1,
+    favoriteCount: 210,
   },
   {
     id: 'taco-bell',
@@ -77,6 +81,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 2.4,
     open: true,
     priceTier: 1,
+    favoriteCount: 165,
   },
   {
     id: 'subway',
@@ -86,6 +91,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 0.6,
     open: true,
     priceTier: 1,
+    favoriteCount: 98,
   },
   {
     id: 'arbys',
@@ -95,6 +101,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 3.1,
     open: false,
     priceTier: 1,
+    favoriteCount: 54,
   },
   {
     id: 'perkins',
@@ -104,6 +111,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 2.0,
     open: true,
     priceTier: 2,
+    favoriteCount: 73,
   },
   {
     id: 'gyro-place',
@@ -113,6 +121,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 1.8,
     open: true,
     priceTier: 2,
+    favoriteCount: 121,
   },
   {
     id: '7-stars-family-restaurant',
@@ -122,6 +131,7 @@ export const restaurants: Restaurant[] = [
     distanceMi: 4.2,
     open: false,
     priceTier: 2,
+    favoriteCount: 36,
   },
 ];
 

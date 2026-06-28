@@ -81,6 +81,10 @@ export interface Restaurant {
   distanceMi?: number;
   open?: boolean;
   priceTier?: 1 | 2;
+  /** How many users favorited this restaurant — drives "Most Popular" and the
+   * count shown next to the heart in "Favorite Restaurants". Not a nutrition
+   * value. */
+  favoriteCount?: number;
 }
 
 export interface UserProfile {
