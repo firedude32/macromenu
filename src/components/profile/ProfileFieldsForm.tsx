@@ -15,6 +15,9 @@ export interface ProfileFieldsValue {
 interface ProfileFieldsFormProps {
   value: ProfileFieldsValue
   onChange: (patch: Partial<ProfileFieldsValue>) => void
+  /** Onboarding splits this form across separate Goal / Stats steps. */
+  showGoal?: boolean
+  showStats?: boolean
 }
 
 const SEX_OPTIONS = [
@@ -49,16 +52,25 @@ const inputClass =
   "w-full rounded-tile bg-frame-bg px-3 py-2.5 text-sm font-semibold text-ink outline-none"
 
 /** Goal + body-stat fields shared by Edit Preferences (§5.8) and Onboarding. */
-export function ProfileFieldsForm({ value, onChange }: ProfileFieldsFormProps) {
+export function ProfileFieldsForm({
+  value,
+  onChange,
+  showGoal = true,
+  showStats = true,
+}: ProfileFieldsFormProps) {
   const feet = Math.floor(value.heightIn / 12)
   const inches = value.heightIn % 12
 
   return (
     <div className="flex flex-col gap-4">
-      <Field label="Goal">
-        <Pill options={GOAL_OPTIONS} value={value.goal} onChange={(goal) => onChange({ goal: goal as Goal })} />
-      </Field>
+      {showGoal && (
+        <Field label="Goal">
+          <Pill options={GOAL_OPTIONS} value={value.goal} onChange={(goal) => onChange({ goal: goal as Goal })} />
+        </Field>
+      )}
 
+      {showStats && (
+        <>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Height">
           <div className="flex gap-2">
@@ -125,6 +137,8 @@ export function ProfileFieldsForm({ value, onChange }: ProfileFieldsFormProps) {
           })}
         </div>
       </Field>
+        </>
+      )}
     </div>
   )
 }
